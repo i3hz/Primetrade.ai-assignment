@@ -1,0 +1,118 @@
+
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=windows-1252">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .update-info { 
+            background-color: #e8f5e9;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .price-up { color: green; }
+        .price-down { color: red; }
+    </style>
+</head>
+<body>
+    <div class="update-info">
+        <h2>Cryptocurrency Live Data</h2>
+        <p>Last Updated: <span id="timestamp">Loading...</span></p>
+        <p>Updates Completed: <span id="updateCount">0</span></p>
+    </div>
+    <table id="cryptoTable">
+        <thead>
+            <tr>
+                <th>Cryptocurrency Name</th>
+                <th>Symbol</th>
+                <th>Current Price (USD)</th>
+                <th>Market Capitalization</th>
+                <th>24h Trading Volume</th>
+                <th>Price Change 24h (%)</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+    let previousPrices = {};
+
+    function formatNumber(num) {
+        return num.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function updateData() {
+        fetch('http://localhost:8000')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('timestamp').textContent = data.timestamp;
+                document.getElementById('updateCount').textContent = data.update_count;
+                
+                const tbody = document.querySelector('#cryptoTable tbody');
+                tbody.innerHTML = '';
+                
+                data.data.forEach(coin => {
+                    const row = document.createElement('tr');
+                    
+                    // Add cells for each property
+                    const nameCell = document.createElement('td');
+                    nameCell.textContent = coin['Cryptocurrency Name'];
+                    row.appendChild(nameCell);
+                    
+                    const symbolCell = document.createElement('td');
+                    symbolCell.textContent = coin['Symbol'];
+                    row.appendChild(symbolCell);
+                    
+                    const priceCell = document.createElement('td');
+                    const currentPrice = coin['Current Price (USD)'];
+                    const previousPrice = previousPrices[coin['Symbol']];
+                    priceCell.textContent = '$' + formatNumber(currentPrice);
+                    
+                    if (previousPrice) {
+                        if (currentPrice > previousPrice) {
+                            priceCell.className = 'price-up';
+                        } else if (currentPrice < previousPrice) {
+                            priceCell.className = 'price-down';
+                        }
+                    }
+                    row.appendChild(priceCell);
+                    
+                    const marketCapCell = document.createElement('td');
+                    marketCapCell.textContent = '$' + formatNumber(coin['Market Capitalization']);
+                    row.appendChild(marketCapCell);
+                    
+                    const volumeCell = document.createElement('td');
+                    volumeCell.textContent = '$' + formatNumber(coin['24h Trading Volume']);
+                    row.appendChild(volumeCell);
+                    
+                    const changeCell = document.createElement('td');
+                    const change = coin['Price Change 24h (%)'];
+                    changeCell.textContent = formatNumber(change) + '%';
+                    changeCell.className = change >= 0 ? 'price-up' : 'price-down';
+                    row.appendChild(changeCell);
+                    
+                    tbody.appendChild(row);
+                    
+                    // Store current price for next update comparison
+                    previousPrices[coin['Symbol']] = currentPrice;
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                document.getElementById('timestamp').textContent = 'Error updating data';
+            });
+    }
+
+    // Update immediately and then every 5 seconds
+    updateData();
+    setInterval(updateData, 5000);
+    </script>
+</body>
+</html>
